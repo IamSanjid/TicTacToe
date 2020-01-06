@@ -103,7 +103,6 @@ namespace TicTacToe
             ShowMove(false);
             string msg = result != MatchResult.Tie ? "Player " + result.ToString() + " has won!" : "The match is a Tie";
             Console.WriteLine("The result is: \n\t" + msg);
-            Console.WriteLine("Press Enter to continue..");
             isGameOver = true;
         }
     }

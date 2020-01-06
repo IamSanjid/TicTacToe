@@ -110,9 +110,9 @@ namespace TicTacToe
         {
             foreach(var player in board.Players)
             {
-                var hori = board.GetMoves().IsHorizontallyMatched((char)player.Type, board.Depth);
-                var verti = board.GetMoves().IsVerticallyMatched((char)player.Type, board.Depth);
-                var diognally = board.GetMoves().IsDiagonallyMatched((char)player.Type, board.Depth);
+                var hori = board.GetMoves().IsHorizontallyMatched((char)player.Type, board.MatchDepth);
+                var verti = board.GetMoves().IsVerticallyMatched((char)player.Type, board.MatchDepth);
+                var diognally = board.GetMoves().IsDiagonallyMatched((char)player.Type, board.MatchDepth);
                 if (
                     hori ||
                     verti ||
@@ -137,7 +137,7 @@ namespace TicTacToe
         public int DimensionX { get; private set; }
         public int DimensionY { get; private set; }
 
-        public int Depth => DimensionX > 3 || DimensionY > 3 ? 4 : 3;
+        public int MatchDepth => DimensionX > 3 || DimensionY > 3 ? 4 : 3;
 
         public Player CurrentPlayer {get; private set;}
         public Player LastPlayer {get; private set;}
@@ -146,15 +146,22 @@ namespace TicTacToe
 
         private char[,] _moves;
 
+        int AI_Depth = 9;
+
         public Action<MatchResult> MatchResultOut;
 
-        public static Board NewBoard(int dimensionX = 3, int dimensionY = 3)
+        public static Board NewBoard(int dimensionX = 3, int dimensionY = 3, Difficulty difficulty = Difficulty.Hard)
         {           
             Board _board = new Board();
 
+            if (difficulty == Difficulty.Easy)
+                _board.AI_Depth = 3;
+            else if (difficulty == Difficulty.Medium)
+                _board.AI_Depth = 4;
+
             _board.Players = new List<Player>();
-            _board.Players.Add(new Player(PlayerType.Type_O));
             _board.Players.Add(new Player(PlayerType.Type_X));
+            _board.Players.Add(new Player(PlayerType.Type_O));
 
             _board.CurrentPlayer = _board.Players[0];
 
@@ -204,8 +211,8 @@ namespace TicTacToe
         {
             if (fpAI && LastPlayer is null)
             {
-                var move = await MinimaxAlgo.BestMove(this.Clone());
-                if (move.Item1 == -1 || move.Item1 == -1) goto RES;
+                var move = await MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
+                if (move is null) goto RES;
                 CurrentPlayer.X = move.Item1;
                 CurrentPlayer.Y = move.Item2;
                 await SetMove(false);
@@ -217,10 +224,12 @@ namespace TicTacToe
             _moves[CurrentPlayer.Y, CurrentPlayer.X] = (char)CurrentPlayer.Type;
             NextPlayer();
 
-            if (AI)
+            var res = this.CheckMatchResult();
+
+            if (AI && res == MatchResult.None)
             {
-                var move = await MinimaxAlgo.BestMove(this.Clone());
-                if (move.Item1 == -1 || move.Item1 == -1) goto RES;
+                var move = await MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
+                if (move is null) goto RES;
                 CurrentPlayer.X = move.Item1;
                 CurrentPlayer.Y = move.Item2;
                 await SetMove(false);
@@ -228,7 +237,7 @@ namespace TicTacToe
 
             RES:
 
-            var res = this.CheckMatchResult();
+            res = this.CheckMatchResult();
             if (res != MatchResult.None)
             {
                 MatchResultOut?.Invoke(res);

@@ -22,7 +22,7 @@ namespace TicTacToe
 
         private static Random Random = new Random();
 
-        async private static Task<Moves> GetMoves(Board _currentBoard, Difficulty difficulty = Difficulty.Hard)
+        async private static Task<Moves> GetMoves(Board _currentBoard, int depth)
         {
             int bestScore = int.MinValue;
 
@@ -37,8 +37,8 @@ namespace TicTacToe
                         if (_currentBoard.GetMoves()[y, x] == ' ')
                         {
                             _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
-                            
-                            int score = MinMax(_currentBoard.Clone(), false, 3, difficulty);
+
+                            int score = MinMax(_currentBoard.Clone(), false, int.MinValue, int.MaxValue, depth);
                             if (score >= bestScore)
                             {
                                 best_moves.Add(new Tuple<int, int>(x, y), score);
@@ -56,33 +56,28 @@ namespace TicTacToe
             return new Moves{ BestMoves = best_moves, WorseMoves = worse_moves, BestScore = bestScore };
         }
 
-        async public static Task<Tuple<int, int>> BestMove(Board _currentBoard, Difficulty difficulty = Difficulty.Hard)
+        async public static Task<Tuple<int, int>> BestMove(Board _currentBoard, int depth)
         {
-            var moves = await GetMoves(_currentBoard, difficulty);
+            var moves = await GetMoves(_currentBoard, depth);
             var move = new Tuple<int, int>(-1, -1);
-            if (difficulty == Difficulty.Hard)
+            var best_moves = moves.BestMoves.Keys.ToList();
+            foreach(var mv in moves.BestMoves)
             {
-                var best_moves = moves.BestMoves.Keys.ToList();
-                foreach(var mv in moves.BestMoves)
-                {
-                    if (mv.Value != moves.BestScore)
-                        best_moves.Remove(mv.Key);
-                }
-                if (best_moves.Count > 0)
-                    move = best_moves[Random.Next(best_moves.Count)];
+                if (mv.Value != moves.BestScore)
+                    best_moves.Remove(mv.Key);
             }
+            if (best_moves.Count > 0)
+                move = best_moves[Random.Next(best_moves.Count)];
             else
-            {
-                move = moves.WorseMoves[Random.Next(moves.WorseMoves.Count)];
-            }
+                move = moves.WorseMoves.FirstOrDefault();
             return move;
         }
 
         
-        private static int MinMax(Board _currentBoard, bool isMaximizingPlayer, int depth, Difficulty dif = Difficulty.Hard)
+        private static int MinMax(Board _currentBoard, bool isMaximizingPlayer, int alpha, int beta, int depth)
         {
             var res = _currentBoard.CheckMatchResult();
-            if (res != MatchResult.None)
+            if (res != MatchResult.None || depth == 0)
             {
                 if (res == MatchResult.Tie) return 0;
                 if (isMaximizingPlayer && 
@@ -107,9 +102,13 @@ namespace TicTacToe
                         {
                             _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
                             
-                            int score = MinMax(_currentBoard.Clone(), false, depth + 1);
-                            bestScore = Math.Max(score, bestScore);
-
+                            int score = MinMax(_currentBoard.Clone(), false, alpha, beta, depth - 1);
+                            bestScore = Math.Max(bestScore, score);
+                            alpha = Math.Max(alpha, score);
+                            
+                            if (beta <= alpha)
+                                break;
+                            
                             _currentBoard.UndoLastMove();
                         }
                     }
@@ -127,8 +126,12 @@ namespace TicTacToe
                         {
                             _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
                             
-                            int score = MinMax(_currentBoard.Clone(), true, depth - 1);
+                            int score = MinMax(_currentBoard.Clone(), true, alpha, beta, depth - 1);
                             bestScore = Math.Min(bestScore, score);
+                            beta = Math.Min(beta, score);
+
+                            if (beta <= alpha)
+                                break;
 
                             _currentBoard.UndoLastMove();
                         }
