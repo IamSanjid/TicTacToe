@@ -29,7 +29,7 @@ namespace TicTacToe
             Console.Clear();
             ClearBoard();
             Console.SetCursorPosition(0, 0);
-            if (mode is 1 && (Random.Next(2) + 1) == 2) _board.SetMove(true, true).GetAwaiter().GetResult();
+            if (mode is 1 && (Random.Next(2) + 1) == 2) _board.SetMove(true, true);
         }
 
         static void Main(string[] args)
@@ -51,7 +51,7 @@ namespace TicTacToe
                         Console.CursorLeft = _board.CurrentPlayer.X * 2;
                         break;
                     case ConsoleKey.RightArrow:
-                        if (_board.CurrentPlayer.X < 2)
+                        if (_board.CurrentPlayer.X < _board.DimensionX - 1)
                             _board.CurrentPlayer.X++;
                         Console.CursorLeft = _board.CurrentPlayer.X * 2;
                         break;
@@ -61,12 +61,12 @@ namespace TicTacToe
                         Console.CursorTop = _board.CurrentPlayer.Y;
                         break;
                     case ConsoleKey.DownArrow:
-                        if (_board.CurrentPlayer.Y < 2)
+                        if (_board.CurrentPlayer.Y < _board.DimensionY - 1)
                             _board.CurrentPlayer.Y++;
                         Console.CursorTop = _board.CurrentPlayer.Y;
                         break;
                     case ConsoleKey.Enter:
-                        if (_board.SetMove(mode is 1).GetAwaiter().GetResult() && !isGameOver)
+                        if (_board.SetMove(mode is 1) && !isGameOver)
                         {
                             ShowMove();
                         }
@@ -92,7 +92,7 @@ namespace TicTacToe
 
         static void ClearBoard(int tab = 0)
         {
-            _board = Board.NewBoard();
+            _board = Board.NewBoard(3, 3);
             //_board.Print(tab);
             _board.MatchResultOut += TheMatchResultOut;
         }

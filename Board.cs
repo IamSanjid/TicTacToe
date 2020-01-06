@@ -18,17 +18,25 @@ namespace TicTacToe
         public static bool IsVerticallyMatched (this char[,] moves, char check_char, int depth, int startX = 0, int startY = 0)
         {
             bool result = false;
-
             int sum = 0;
 
-            for (int y = startY; y < depth; y++)
+            for (int y = startY, max_y = moves.GetLength(0); y < max_y; y++)
             {
-                for (int x = startX; x < depth; x++)
+                for (int x = startX, max_x = moves.GetLength(1); x < max_x; x++)
                 {
-                    sum += moves[y, x];
+                    if (moves[y, x] == check_char)
+                    {
+                        for (int lame_y = y, count = 0; lame_y < max_y; lame_y++, count++)
+                        {
+                            if (count > depth)
+                                break;
+                            if (moves[lame_y, x] == check_char)
+                                sum++;
+                            if (sum == depth) { result = true; break; }
+                        }
+                        sum = 0;
+                    }
                 }
-                if (sum == check_char * depth) { result = true; break; }
-                sum = 0;
             }
 
             return result;
@@ -37,17 +45,25 @@ namespace TicTacToe
         public static bool IsHorizontallyMatched (this char[,] moves, char check_char, int depth, int startX = 0, int startY = 0)
         {
             bool result = false;
-
             int sum = 0;
 
-            for (int x = startX; x < depth; x++)
+            for (int y = startY, max_y = moves.GetLength(0); y < max_y; y++)
             {
-                for (int y = startY; y < depth; y++)
+                for (int x = startX, max_x = moves.GetLength(1); x < max_x; x++)
                 {
-                    sum += moves[y, x];
+                    if (moves[y, x] == check_char)
+                    {
+                        for (int lame_x = x, count = 0; lame_x < max_x; lame_x++, count++)
+                        {
+                            if (count > depth)
+                                break;
+                            if (moves[y, lame_x] == check_char)
+                                sum++;
+                            if (sum == depth) { result = true; break; }
+                        }
+                        sum = 0;
+                    }
                 }
-                if (sum == check_char * depth) { result = true; break; }
-                sum = 0;
             }
 
             return result;
@@ -59,25 +75,25 @@ namespace TicTacToe
 
             int sum = 0;
 
-            for (int y = startY; y < depth; y++)
+            int max_x = moves.GetLength(1), max_y = moves.GetLength(0);
+
+            int check_max_x = max_x + (max_x % 2 == 0 ? 0 : 1);
+            int check_max_y = max_y + (max_y % 2 == 0 ? 0 : 1);
+
+            for (int y = startY; y < max_y; y++)
             {
-                for (int x = startX; x < depth; x++)
+                for (int x = startX; x < max_x; x++)
                 {
-                    if (moves[y, x] == check_char)
+                    if (moves[y, x] == check_char && y < check_max_y - depth)
                     {
-                        int lame_x = x;
-                        int lame_y = y;
-
-                        int lame_inc = x <= depth / 2 ? 1 : -1;
-
-                        for (; lame_x < depth && lame_y < depth; lame_x += lame_inc, lame_y++)
+                        int lame_inc = x >= check_max_x / 2 ? -1 : 1;
+                        for (int lame_x = x, lame_y = y, count = 0; lame_x < max_x && lame_y < max_y 
+                            && lame_x >= 0; lame_x += lame_inc, lame_y++, count++)
                         {
-                            sum += moves[lame_x, lame_y];
-                            if (sum == check_char * depth)
-                            {
-                                result = true;
-                                goto RET;
-                            }
+                            if (count > depth) break;
+                            if (moves[lame_y, lame_x] == check_char)
+                                sum++;
+                            if (sum == depth) { result = true; goto RET; }
                         }
                         sum = 0;
                     }
@@ -146,11 +162,11 @@ namespace TicTacToe
 
         private char[,] _moves;
 
-        int AI_Depth = 9;
+        int AI_Depth;
 
         public Action<MatchResult> MatchResultOut;
 
-        public static Board NewBoard(int dimensionX = 3, int dimensionY = 3, Difficulty difficulty = Difficulty.Hard)
+        public static Board NewBoard(int dimensionX = 3, int dimensionY = 3, Difficulty difficulty = Difficulty.Easy)
         {           
             Board _board = new Board();
 
@@ -158,6 +174,8 @@ namespace TicTacToe
                 _board.AI_Depth = 3;
             else if (difficulty == Difficulty.Medium)
                 _board.AI_Depth = 4;
+            else
+                _board.AI_Depth = 0;
 
             _board.Players = new List<Player>();
             _board.Players.Add(new Player(PlayerType.Type_X));
@@ -207,15 +225,15 @@ namespace TicTacToe
             }
         }
 
-        async public Task<bool> SetMove(bool AI = true, bool fpAI = false)
+        public bool SetMove(bool AI = true, bool fpAI = false)
         {
             if (fpAI && LastPlayer is null)
             {
-                var move = await MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
-                if (move is null) goto RES;
+                var move = MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
+                if (move.x == -1) goto RES;
                 CurrentPlayer.X = move.Item1;
                 CurrentPlayer.Y = move.Item2;
-                await SetMove(false);
+                SetMove(false);
                 return true;
             }
 
@@ -228,11 +246,11 @@ namespace TicTacToe
 
             if (AI && res == MatchResult.None)
             {
-                var move = await MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
-                if (move is null) goto RES;
+                var move = MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
+                if (move.x == -1) goto RES;
                 CurrentPlayer.X = move.Item1;
                 CurrentPlayer.Y = move.Item2;
-                await SetMove(false);
+                SetMove(false);
             }
 
             RES:
@@ -299,41 +317,40 @@ namespace TicTacToe
 
         public void Print(int tab = 0)
         {
-            for (int y = 0; y < 3; y++)
+            for (int y = 0; y < DimensionY; y++)
             {
-                for (int x = 0; x < 3; x++)
+                for (int x = 0; x < DimensionX; x++)
                 {
                     if (_moves[y, x] != ' ')
                     {
-                        if (y < 2)
+                        if (y < DimensionY - 1)
                             _mainBoard.Append(UNDERLINE + _moves[y, x] + RESET);
                         else
                             _mainBoard.Append(_moves[y, x]);
                     }
                     else
                     {
-                        _mainBoard.Append(y < 2 ? "_" : " ");
+                        _mainBoard.Append(y < DimensionY - 1 ? "_" : " ");
                     }
 
-                    if (x < 2)
+                    if (x < DimensionX - 1)
                     {
                         _mainBoard.Append("|");
                     }
                 }
 
-                if (y < 2)
+                if (y < DimensionY - 1)
                     _mainBoard.AppendLine();
             }
 
-            for (int i = 0; i < tab; i++)
-                Console.Write("\t");
-            Console.WriteLine(_mainBoard.ToString().Split('\n')[0]);
-            for (int i = 0; i < tab; i++)
-                Console.Write("\t");
-            Console.WriteLine(_mainBoard.ToString().Split('\n')[1]);
-            for (int i = 0; i < tab; i++)
-                Console.Write("\t");
-            Console.WriteLine(_mainBoard.ToString().Split('\n')[2]);
+            var lines =_mainBoard.ToString().Split('\n');
+
+            foreach(var line in lines)
+            {
+                for (int i = 0; i < tab; i++)
+                    Console.Write("\t");
+                Console.WriteLine(line);
+            }
         }
 
         public override string ToString()
