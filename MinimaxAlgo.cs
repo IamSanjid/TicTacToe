@@ -21,6 +21,7 @@ namespace TicTacToe
         }
 
         private static Random Random = new Random();
+        private static char AI_type = 'x';
 
         private static Moves GetMoves(Board _currentBoard, int depth)
         {
@@ -30,26 +31,27 @@ namespace TicTacToe
 
             var best_moves = new Dictionary<(int x, int y), (int score, int depth)>();
             var worse_moves = new List<(int x, int y)>();
+            AI_type = (char)_currentBoard.CurrentPlayer.Type;
 
-            for (int y = 0, max_y = _currentBoard.GetMoves().GetLength(0); y < max_y; y++)
+            int max_x = _currentBoard.GetState().GetLength(1), max_y = _currentBoard.GetState().GetLength(0);
+
+            for (int y = 0; y < max_y; y++)
             {
-                for (int x = 0, max_x = _currentBoard.GetMoves().GetLength(1); x < max_x; x++)
+                for (int x = 0; x < max_x; x++)
                 {
-                    if (_currentBoard.GetMoves()[y, x] == ' ')
+                    if (_currentBoard.SetMove(x, y))
                     {
-                        _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
-
                         var result = MinMax(_currentBoard.Clone(), false, int.MinValue, int.MaxValue, depth);
+                        _currentBoard.UndoLastMove();
+
                         if ((result.score >= bestResult.score)
-                            || (result.score == bestResult.score && result.depth < bestResult.depth))
+                           || (result.score == bestResult.score && result.depth < bestResult.depth))
                         {
                             best_moves.Add((x, y), result);
                             bestResult = result;
                         }
                         else
                             worse_moves.Add((x, y));
-
-                        _currentBoard.UndoLastMove();
                     }
                 }
             }
@@ -64,7 +66,8 @@ namespace TicTacToe
             var best_moves = moves.BestMoves.Keys.ToList();
             foreach(var mv in moves.BestMoves)
             {
-                if (mv.Value.score != moves.BestResult.score || mv.Value.depth != moves.BestResult.depth)
+                if (mv.Value.score != moves.BestResult.score 
+                    || (mv.Value.score == moves.BestResult.score && mv.Value.depth > moves.BestResult.depth))
                     best_moves.Remove(mv.Key);
             }
             if (best_moves.Count > 0)
@@ -79,49 +82,46 @@ namespace TicTacToe
             if (res != MatchResult.None)
             {
                 var result = (score: -10, depth: depth);
-                
-                if (res == MatchResult.Tie) result.score = 0;
-                if (isMaximizingPlayer && 
-                    res.ToString().ToLower()[0] == (char)_currentBoard.CurrentPlayer.Type)
+                var winner = res.ToString().ToLowerInvariant()[0];
+                if (res == MatchResult.Tie) 
+                    result.score = 0;
+                else if (winner == AI_type)
                 {
                     result.score = 10;
                 }
-                else if (!isMaximizingPlayer && res.ToString().ToLower()[0] != (char)_currentBoard.CurrentPlayer.Type)
-                    result.score = 10;
+
                 
                 return result;
             }
 
+            int max_x = _currentBoard.GetState().GetLength(1);
+            int max_y = _currentBoard.GetState().GetLength(0);
+
             if (isMaximizingPlayer)
             {
                 var bestResult = (score: Int32.MinValue, depth: Int32.MaxValue);
-                //int bestScore = Int32.MinValue;
-                //int bestDepth = Int32.MaxValue;
 
-                for (int y = 0, max_y = _currentBoard.GetMoves().GetLength(0); y < max_y; y++)
+                for (int y = 0; y < max_y; y++)
                 {
-                    for (int x = 0, max_x = _currentBoard.GetMoves().GetLength(1); x < max_x; x++)
+                    for (int x = 0; x < max_x; x++)
                     {
-                        if (_currentBoard.GetMoves()[y, x] == ' ')
+                        if (_currentBoard.SetMove(x, y))
                         {
-                            _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
-                            
                             var result = MinMax(_currentBoard.Clone(), false, alpha, beta, depth + 1);
+                            _currentBoard.UndoLastMove();
+
                             bestResult = Max(result, bestResult);
-                            //int score = result.score;
                             alpha = Math.Max(alpha, result.score);
 
-                            /*if(score > bestScore) {
-                                bestScore = score;
-                                bestDepth = result.depth;
-                            } else if (score == bestScore && result.depth < bestDepth) {
-                                bestDepth = result.depth;
+                            /*if (result.score > bestResult.score) {
+                                bestResult.score = result.score;
+                                bestResult.depth = result.depth;
+                            } else if (result.score == bestResult.score && result.depth < bestResult.depth) {
+                                bestResult.depth = result.depth;
                             }*/
                             
                             if (beta <= alpha)
-                                break;
-                            
-                            _currentBoard.UndoLastMove();
+                                return bestResult;
                         }
                     }
                 }
@@ -130,37 +130,33 @@ namespace TicTacToe
             else
             {
                 var bestResult = (score: Int32.MaxValue, depth: Int32.MaxValue);
-                //int bestScore = Int32.MaxValue;
-                //int bestDepth = Int32.MaxValue;
 
-                for (int y = 0, max_y = _currentBoard.GetMoves().GetLength(0); y < max_y; y++)
+                for (int y = 0; y < max_y; y++)
                 {
-                    for (int x = 0, max_x = _currentBoard.GetMoves().GetLength(1); x < max_x; x++)
+                    for (int x = 0; x < max_x; x++)
                     {
-                        if (_currentBoard.GetMoves()[y, x] == ' ')
+                        if (_currentBoard.SetMove(x, y))
                         {
-                            _currentBoard.SetMove(x, y, (char)_currentBoard.CurrentPlayer.Type);
-                            
                             var result = MinMax(_currentBoard.Clone(), true, alpha, beta, depth + 1);
-                            bestResult = Min(result, bestResult);
-                            //int score = result.score;
-                            //bestScore = Math.Min(bestScore, score);
+                            _currentBoard.UndoLastMove();
+
+                            bestResult = Min(bestResult, result);
+
                             beta = Math.Min(beta, result.score);
 
-                            /*if(score < bestScore) {
-                                bestScore = score;
-                                bestDepth = result.depth;
-                            } else if (score == bestScore && result.depth < bestDepth) {
-                                bestDepth = result.depth;
+                            /*if (result.score < bestResult.score) {
+                                bestResult.score = result.score;
+                                bestResult.depth = result.depth;
+                            } else if (result.score == bestResult.score && result.depth < bestResult.depth) {
+                                bestResult.depth = result.depth;
                             }*/
 
                             if (beta <= alpha)
-                                break;
-
-                            _currentBoard.UndoLastMove();
+                                return bestResult;
                         }
                     }
                 }
+
                 return bestResult;
             }
         }
@@ -168,7 +164,8 @@ namespace TicTacToe
         private static (int score, int depth) Max((int score, int depth) result1, (int score, int depth) result2)
         {
             var res = result1;
-            if (result1.score > result2.score) {
+            if (result1.score > result2.score) 
+            {
                 res.score = result1.score;
                 res.depth = result1.depth;
             }
@@ -181,10 +178,11 @@ namespace TicTacToe
             
             if (result1.score == result2.score)
             {
-                res.depth = result1.depth < result2.depth ? result2.depth : result1.depth;
+                res.depth = Math.Min(result1.depth, result2.depth);
             }
 
             return res;
+            //return (score: Math.Max(result1.score, result2.depth), depth: Math.Min(result1.depth, result2.depth));
         }
 
         private static (int score, int depth) Min((int score, int depth) result1, (int score, int depth) result2)
@@ -203,10 +201,11 @@ namespace TicTacToe
             
             if (result1.score == result2.score)
             {
-                res.depth = result1.depth < result2.depth ? result2.depth : result1.depth;
+                res.depth = Math.Min(result1.depth, result2.depth);
             }
 
             return res;
+            //return (score: Math.Min(result1.score, result2.depth), depth: Math.Min(result1.depth, result2.depth));
         }
     }
 }

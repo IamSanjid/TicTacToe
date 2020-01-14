@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Linq;
 
 namespace TicTacToe
 {
@@ -15,84 +15,91 @@ namespace TicTacToe
 
     public static class Extentions
     {
-        public static bool IsVerticallyMatched (this char[,] moves, char check_char, int depth, int startX = 0, int startY = 0)
+        public static bool IsVerticallyMatched (this char[,] state, char check_char, int depth, int startX = 0, int startY = 0)
         {
             bool result = false;
             int sum = 0;
 
-            for (int y = startY, max_y = moves.GetLength(0); y < max_y; y++)
+            for (int y = startY, max_y = state.GetLength(0); y < max_y; y++)
             {
-                for (int x = startX, max_x = moves.GetLength(1); x < max_x; x++)
+                for (int x = startX, max_x = state.GetLength(1); x < max_x; x++)
                 {
-                    if (moves[y, x] == check_char)
+                    if (state[y, x] == check_char)
                     {
-                        for (int lame_y = y, count = 0; lame_y < max_y; lame_y++, count++)
+                        for (int lame_y = y, count = 0; lame_y < max_y && count < depth; lame_y++, count++)
                         {
-                            if (count > depth)
-                                break;
-                            if (moves[lame_y, x] == check_char)
+                            if (state[lame_y, x] == check_char)
                                 sum++;
-                            if (sum == depth) { result = true; break; }
+                            else
+                                break;
+                            if (sum == depth) { result = true; goto RES; }
+                        }
+                        sum = 0;
+                    }
+                }
+            }
+            RES:
+            return result;
+        }
+
+        public static bool IsHorizontallyMatched (this char[,] state, char check_char, int depth, int startX = 0, int startY = 0)
+        {
+            bool result = false;
+            int sum = 0;
+
+            for (int y = startY, max_y = state.GetLength(0); y < max_y; y++)
+            {
+                for (int x = startX, max_x = state.GetLength(1); x < max_x; x++)
+                {
+                    if (state[y, x] == check_char)
+                    {
+                        for (int lame_x = x, count = 0; lame_x < max_x && count < depth; lame_x++, count++)
+                        {
+                            if (state[y, lame_x] == check_char)
+                                sum++;
+                            else
+                                break;
+                            if (sum == depth) { result = true; goto RES; }
                         }
                         sum = 0;
                     }
                 }
             }
 
+            RES:
             return result;
         }
 
-        public static bool IsHorizontallyMatched (this char[,] moves, char check_char, int depth, int startX = 0, int startY = 0)
-        {
-            bool result = false;
-            int sum = 0;
-
-            for (int y = startY, max_y = moves.GetLength(0); y < max_y; y++)
-            {
-                for (int x = startX, max_x = moves.GetLength(1); x < max_x; x++)
-                {
-                    if (moves[y, x] == check_char)
-                    {
-                        for (int lame_x = x, count = 0; lame_x < max_x; lame_x++, count++)
-                        {
-                            if (count > depth)
-                                break;
-                            if (moves[y, lame_x] == check_char)
-                                sum++;
-                            if (sum == depth) { result = true; break; }
-                        }
-                        sum = 0;
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        public static bool IsDiagonallyMatched (this char[,] moves, char check_char, int depth, int startX = 0, int startY = 0)
+        public static bool IsDiagonallyMatched (this char[,] state, char check_char, int depth, int startX = 0, int startY = 0)
         {
             bool result = false;
 
             int sum = 0;
 
-            int max_x = moves.GetLength(1), max_y = moves.GetLength(0);
+            int max_x = state.GetLength(1), max_y = state.GetLength(0);
 
             int check_max_x = max_x + (max_x % 2 == 0 ? 0 : 1);
             int check_max_y = max_y + (max_y % 2 == 0 ? 0 : 1);
 
             for (int y = startY; y < max_y; y++)
             {
+                if (y >= check_max_y - depth)
+                {
+                    goto RET;
+                }
                 for (int x = startX; x < max_x; x++)
                 {
-                    if (moves[y, x] == check_char && y < check_max_y - depth)
+                    if (state[y, x] == check_char)
                     {
                         int lame_inc = x >= check_max_x / 2 ? -1 : 1;
-                        for (int lame_x = x, lame_y = y, count = 0; lame_x < max_x && lame_y < max_y 
-                            && lame_x >= 0; lame_x += lame_inc, lame_y++, count++)
+                        for (int lame_x = x, lame_y = y, count = 0; 
+                            lame_x < max_x && lame_y < max_y && lame_x >= 0 && count < depth; 
+                            lame_x += lame_inc, lame_y++, count++)
                         {
-                            if (count > depth) break;
-                            if (moves[lame_y, lame_x] == check_char)
+                            if (state[lame_y, lame_x] == check_char)
                                 sum++;
+                            else
+                                break;
                             if (sum == depth) { result = true; goto RET; }
                         }
                         sum = 0;
@@ -104,32 +111,16 @@ namespace TicTacToe
             return result;
         }
 
-        public static bool IsSpaceLeft(this char[,] moves)
-        {
-            bool result = false; 
-            for (int y = 0, max_y = moves.GetLength(0); y < max_y; y++)
-            {
-                for (int x = 0, max_x = moves.GetLength(1); x < max_x; x++)
-                {
-                    if (moves[y, x] == ' ')
-                    {
-                        result = true;
-                        goto RET;
-                    }
-                }
-            }
-            RET:
-            return result;
-        }
-
         public static MatchResult CheckMatchResult(this Board board)
         {
+            var state = board.GetState();
             foreach(var player in board.Players)
             {
-                var hori = board.GetMoves().IsHorizontallyMatched((char)player.Type, board.MatchDepth);
-                var verti = board.GetMoves().IsVerticallyMatched((char)player.Type, board.MatchDepth);
-                var diognally = board.GetMoves().IsDiagonallyMatched((char)player.Type, board.MatchDepth);
+                var hori = state.IsHorizontallyMatched((char)player.Type, board.MatchDepth);
+                var verti = state.IsVerticallyMatched((char)player.Type, board.MatchDepth);
+                var diognally = state.IsDiagonallyMatched((char)player.Type, board.MatchDepth);
                 if (
+                    //player.IsWinner(board)
                     hori ||
                     verti ||
                     diognally
@@ -138,120 +129,134 @@ namespace TicTacToe
                     return player.Type == PlayerType.Type_X ? MatchResult.X : MatchResult.O; 
                 }
             }
-            if (!board.GetMoves().IsSpaceLeft()) return MatchResult.Tie;
+            if (board.TotalMoves >= state.Length) 
+                return MatchResult.Tie;
             return MatchResult.None;
+        }
+
+        public static IList<T> Clone<T>(this IList<T> listToClone) where T: ICloneable
+        {
+            return listToClone.Select(item => (T)item.Clone()).ToList();
+        }
+
+        public static void Fill<T>(this T[,] array, T value)
+        {
+            for (int upper = 0, max_upper = array.GetLength(0), max_lower = array.GetLength(1); upper < max_upper; upper++)
+            {
+                for (int lower = 0; lower < max_lower; lower++)
+                {
+                    array[upper, lower] = value;
+                }
+            }
         }
     }
 
     public class Board
     {
-        const string UNDERLINE = "\x1B[4m";
-        const string RESET = "\x1B[0m";
-
         public List<Player> Players;
 
         public int DimensionX { get; private set; }
         public int DimensionY { get; private set; }
 
-        public int MatchDepth => DimensionX > 3 || DimensionY > 3 ? 4 : 3;
+        public int MatchDepth => DimensionX > 4 && DimensionY > 4 ? 4 : 3;
 
-        public Player CurrentPlayer {get; private set;}
-        public Player LastPlayer {get; private set;}
+        public Player CurrentPlayer => Players[_currentPlayerIndex];
+        private int _currentPlayerIndex = 0;
 
-        private StringBuilder _mainBoard = new StringBuilder();
+        public int TotalMoves => _moves.Count;
 
-        private char[,] _moves;
+        private List<(PlayerType type, int x, int y)> _moves;
 
+        private readonly char[,] _state;
+
+        private Difficulty _difficulty;
         int AI_Depth;
 
         public Action<MatchResult> MatchResultOut;
+        public Action<long> AIDebuggingFinished;
 
-        public static Board NewBoard(int dimensionX = 3, int dimensionY = 3, Difficulty difficulty = Difficulty.Easy)
-        {           
-            Board _board = new Board();
+        public bool DebugAITime = false;
+
+        public Board(int dimensionX, int dimensionY, Difficulty difficulty)
+        {
+            _difficulty = difficulty;
+            DimensionX = dimensionX;
+            DimensionY = dimensionY;
+            _moves = new List<(PlayerType type, int x, int y)>();
+            Players = new List<Player>();
+            _state = new char[dimensionY, dimensionX];
 
             if (difficulty == Difficulty.Easy)
-                _board.AI_Depth = 3;
+                AI_Depth = 3;
             else if (difficulty == Difficulty.Medium)
-                _board.AI_Depth = 4;
+                AI_Depth = 2;
             else
-                _board.AI_Depth = 0;
+                AI_Depth = 0;
 
-            _board.Players = new List<Player>();
-            _board.Players.Add(new Player(PlayerType.Type_X));
-            _board.Players.Add(new Player(PlayerType.Type_O));
-
-            _board.CurrentPlayer = _board.Players[0];
-
-            _board.DimensionX = dimensionX;
-            _board.DimensionY = dimensionY;
-
-            _board._moves = new char[dimensionX, dimensionY];
-
-            for (int y = 0; y < dimensionY; y++)
-            {
-                for (int x = 0; x < dimensionX; x++)
-                {
-                    _board._moves[y, x] = ' ';
-                }
-            }
-
-            return _board;
+            _state.Fill(' ');
         }
 
-        public char GetMove(int x, int y)
+        public void SetPlayers(IList<PlayerType> types)
         {
-            return _moves[y, x];
+            Players.Clear();
+            foreach(var type in types)
+                Players.Add(new Player(type));
+            _state.Fill(' ');
         }
 
-        public char[,] GetMoves()
+        public char[,] GetState()
         {
-            return _moves;
+            return _state;
         }
 
-        private void NextPlayer(bool set_last = true)
+        private void NextPlayer()
         {
-            int index = Players.FindIndex(pl => pl.Type == (!set_last ? LastPlayer.Type : CurrentPlayer.Type));
-            if (set_last)
-                LastPlayer = Players[index];
+            CurrentPlayer.SetMove();
+            _moves.Add((CurrentPlayer.Type, CurrentPlayer.X, CurrentPlayer.Y));
             
-            if (index >= Players.Count - 1)
+            if (_currentPlayerIndex >= Players.Count - 1)
             {
-                CurrentPlayer = Players[0];
+                _currentPlayerIndex = 0;
             }
             else
             {
-                CurrentPlayer = Players[index + 1];
+                _currentPlayerIndex++;
             }
         }
 
-        public bool SetMove(bool AI = true, bool fpAI = false)
+        public bool SetMove(bool normalMove = true)
         {
-            if (fpAI && LastPlayer is null)
-            {
-                var move = MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
-                if (move.x == -1) goto RES;
-                CurrentPlayer.X = move.Item1;
-                CurrentPlayer.Y = move.Item2;
-                SetMove(false);
-                return true;
-            }
-
-            if (_moves[CurrentPlayer.Y, CurrentPlayer.X] != ' ') return false;
-
-            _moves[CurrentPlayer.Y, CurrentPlayer.X] = (char)CurrentPlayer.Type;
-            NextPlayer();
-
             var res = this.CheckMatchResult();
 
-            if (AI && res == MatchResult.None)
+            if (!normalMove && res == MatchResult.None)
             {
+                var stopwatch = new Stopwatch();
+                if (DebugAITime)
+                {
+                    stopwatch.Start();
+                }
+                
                 var move = MinimaxAlgo.BestMove(this.Clone(), AI_Depth);
-                if (move.x == -1) goto RES;
-                CurrentPlayer.X = move.Item1;
-                CurrentPlayer.Y = move.Item2;
-                SetMove(false);
+
+                if (DebugAITime)
+                {
+                    stopwatch.Stop();
+                    AIDebuggingFinished?.Invoke(stopwatch.ElapsedMilliseconds);
+                }
+                
+                if (move.x == -1) 
+                    goto RES;
+                CurrentPlayer.X = move.x;
+                CurrentPlayer.Y = move.y;
+                if (SetMove(true))
+                    goto RES;
+                return false;
             }
+
+            if (_state[CurrentPlayer.Y, CurrentPlayer.X] != ' ') return false;
+
+            _state[CurrentPlayer.Y, CurrentPlayer.X] = (char)CurrentPlayer.Type;
+            NextPlayer();
 
             RES:
 
@@ -267,95 +272,51 @@ namespace TicTacToe
 
         public void UndoLastMove()
         {
-            if (LastPlayer is null) return;
-            _moves[LastPlayer.Y, LastPlayer.X] = ' ';
-            CurrentPlayer = LastPlayer;
-            LastPlayer = null;
+            if (_moves.Count <= 0) return;
+            
+            if (_currentPlayerIndex >= Players.Count - 1)
+            {
+                _currentPlayerIndex = 0;
+            }
+            else if (_currentPlayerIndex <= 0)
+            {
+                _currentPlayerIndex = Players.Count - 1;
+            }
+            else
+            {
+                _currentPlayerIndex--;
+            }
+
+            var lastMove = _moves[_moves.Count - 1];            
+            _state[lastMove.y, lastMove.x] = ' ';
+
+            CurrentPlayer.RemoveLastMove();
+            
+            _moves.Remove(lastMove);
         }
 
         public Board Clone()
         {
-            var board = new Board() { DimensionX = this.DimensionX, DimensionY = this.DimensionY };
+            var board = new Board(DimensionX, DimensionY, _difficulty);
+            Buffer.BlockCopy(this._state, 0, board._state, 0, this._state.Length * sizeof(char));
 
-            board._moves = new char[this.DimensionX, this.DimensionY];
-            Array.Copy(this._moves, board._moves, this._moves.Length);
+            board.Players = (List<Player>)this.Players.Clone();
+            this._moves.ForEach(move => board._moves.Add((type: move.type, x: move.x, y: move.y)));
 
-            board.Players = new List<Player>();
-            int index = 0;
-            foreach(var player in this.Players)
-            {
-                board.Players.Add(player.Clone());
-                if (player == this.CurrentPlayer)
-                {
-                    board.CurrentPlayer = board.Players[index];
-                }
-                if (player == this.LastPlayer)
-                {
-                    board.LastPlayer = board.Players[index];
-                }
-                index++;
-            }
+            board._currentPlayerIndex = _currentPlayerIndex;
 
             return board;
         }
 
-        public void SetMove(int x, int y, char _char)
+        public bool SetMove(int x, int y)
         {
-            _moves[y, x] = _char;
-            var type = _char == (char)PlayerType.Type_X ? PlayerType.Type_X : PlayerType.Type_O;
-            LastPlayer = Players.Find(p => p.Type == type);
-            LastPlayer.X = x;
-            LastPlayer.Y = y;
-            NextPlayer(false);
-        }
-
-        public void ShowMove(int tab = 0)
-        {
-            _mainBoard.Clear();
-            Print(tab);
-        }
-
-        public void Print(int tab = 0)
-        {
-            for (int y = 0; y < DimensionY; y++)
-            {
-                for (int x = 0; x < DimensionX; x++)
-                {
-                    if (_moves[y, x] != ' ')
-                    {
-                        if (y < DimensionY - 1)
-                            _mainBoard.Append(UNDERLINE + _moves[y, x] + RESET);
-                        else
-                            _mainBoard.Append(_moves[y, x]);
-                    }
-                    else
-                    {
-                        _mainBoard.Append(y < DimensionY - 1 ? "_" : " ");
-                    }
-
-                    if (x < DimensionX - 1)
-                    {
-                        _mainBoard.Append("|");
-                    }
-                }
-
-                if (y < DimensionY - 1)
-                    _mainBoard.AppendLine();
-            }
-
-            var lines =_mainBoard.ToString().Split('\n');
-
-            foreach(var line in lines)
-            {
-                for (int i = 0; i < tab; i++)
-                    Console.Write("\t");
-                Console.WriteLine(line);
-            }
-        }
-
-        public override string ToString()
-        {
-            return _mainBoard.ToString();
+            if (_state[y, x] != ' ') 
+                return false;
+            CurrentPlayer.X = x;
+            CurrentPlayer.Y = y;
+            _state[y, x] = (char)CurrentPlayer.Type;
+            NextPlayer();
+            return true;
         }
     }
 }
