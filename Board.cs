@@ -5,13 +5,6 @@ using System.Linq;
 
 namespace TicTacToe
 {
-    public enum MatchResult
-    {
-        X,
-        O,
-        Tie,
-        None
-    }
 
     public static class Extentions
     {
@@ -111,7 +104,7 @@ namespace TicTacToe
             return result;
         }
 
-        public static MatchResult CheckMatchResult(this Board board)
+        public static Kind CheckMatchResult(this Board board)
         {
             var state = board.GetState();
             foreach(var player in board.Players)
@@ -126,12 +119,12 @@ namespace TicTacToe
                     diognally
                 )
                 { 
-                    return player.Type == PlayerType.Type_X ? MatchResult.X : MatchResult.O; 
+                    return player.Type; 
                 }
             }
             if (board.TotalMoves >= state.Length) 
-                return MatchResult.Tie;
-            return MatchResult.None;
+                return Kind.Tie;
+            return Kind.None;
         }
 
         public static IList<T> Clone<T>(this IList<T> listToClone) where T: ICloneable
@@ -165,14 +158,14 @@ namespace TicTacToe
 
         public int TotalMoves => _moves.Count;
 
-        private List<(PlayerType type, int x, int y)> _moves;
+        private List<(Kind type, int x, int y)> _moves;
 
         private readonly char[,] _state;
 
         private Difficulty _difficulty;
         int AI_Depth;
 
-        public Action<MatchResult> MatchResultOut;
+        public Action<Kind> MatchResultOut;
         public Action<long> AIDebuggingFinished;
 
         public bool DebugAITime = false;
@@ -182,7 +175,7 @@ namespace TicTacToe
             _difficulty = difficulty;
             DimensionX = dimensionX;
             DimensionY = dimensionY;
-            _moves = new List<(PlayerType type, int x, int y)>();
+            _moves = new List<(Kind type, int x, int y)>();
             Players = new List<Player>();
             _state = new char[dimensionY, dimensionX];
 
@@ -196,11 +189,11 @@ namespace TicTacToe
             _state.Fill(' ');
         }
 
-        public void SetPlayers(IList<PlayerType> types)
+        public void SetPlayers(IList<Kind> kinds)
         {
             Players.Clear();
-            foreach(var type in types)
-                Players.Add(new Player(type));
+            foreach(var kind in kinds)
+                Players.Add(new Player(kind));
             _state.Fill(' ');
         }
 
@@ -228,7 +221,7 @@ namespace TicTacToe
         {
             var res = this.CheckMatchResult();
 
-            if (!normalMove && res == MatchResult.None)
+            if (!normalMove && res == Kind.None)
             {
                 var stopwatch = new Stopwatch();
                 if (DebugAITime)
@@ -261,7 +254,7 @@ namespace TicTacToe
             RES:
 
             res = this.CheckMatchResult();
-            if (res != MatchResult.None)
+            if (res != Kind.None)
             {
                 MatchResultOut?.Invoke(res);
                 return false;
@@ -290,7 +283,7 @@ namespace TicTacToe
             var lastMove = _moves[_moves.Count - 1];            
             _state[lastMove.y, lastMove.x] = ' ';
 
-            CurrentPlayer.RemoveLastMove();
+            CurrentPlayer.RemoveMove(lastMove.x, lastMove.y);
             
             _moves.Remove(lastMove);
         }
@@ -301,7 +294,7 @@ namespace TicTacToe
             Buffer.BlockCopy(this._state, 0, board._state, 0, this._state.Length * sizeof(char));
 
             board.Players = (List<Player>)this.Players.Clone();
-            this._moves.ForEach(move => board._moves.Add((type: move.type, x: move.x, y: move.y)));
+            board._moves = this._moves.ToList();
 
             board._currentPlayerIndex = _currentPlayerIndex;
 

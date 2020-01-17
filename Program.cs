@@ -182,7 +182,7 @@ namespace TicTacToe
         public static void NewBoard(int dimensionX = 3, int dimensionY = 3, Difficulty difficulty = Difficulty.Hard)
         {           
             _board = new Board(dimensionX, dimensionY, difficulty);
-            _board.SetPlayers(new PlayerType[] { PlayerType.Type_X, PlayerType.Type_O });
+            _board.SetPlayers(new Kind[] { Kind.X, Kind.O });
             _board.MatchResultOut += TheMatchResultOut;
         }
 
@@ -205,10 +205,10 @@ namespace TicTacToe
             lastAITime = milliseconds;
         }
 
-        static void TheMatchResultOut(MatchResult result)
+        static void TheMatchResultOut(Kind result)
         {
             ShowMove(false);            
-            string msg = result != MatchResult.Tie ? "Player " + result.ToString() + " has won!" : "The match is a Tie";
+            string msg = result != Kind.Tie ? "Player " + result.ToString() + " has won!" : "The match is a Tie";
             Console.WriteLine("The result is: \n\t" + msg);
             isGameOver = true;
         }
